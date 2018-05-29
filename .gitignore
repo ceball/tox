@@ -1,3 +1,4 @@
+.dmypy.json
 .vagrant
 *.pyc
 *.pyo

@@ -37,11 +37,12 @@ def get_plugin_manager(plugins=()):
     import tox.venv
 
     pm = pluggy.PluginManager("tox")
-    pm.add_hookspecs(tox.hookspecs)
+    pm.add_hookspecs(tox.hookspec)
     pm.register(tox.config)
     pm.register(tox.interpreters)
     pm.register(tox.venv)
-    pm.register(tox.session)
+    from tox import session
+    pm.register(session)
     pm.load_setuptools_entrypoints("tox")
     for plugin in plugins:
         pm.register(plugin)
@@ -60,7 +61,7 @@ class Parser:
         """ add argument to command line parser.  This takes the
         same arguments that ``argparse.ArgumentParser.add_argument``.
         """
-        return self.argparser.add_argument(*args, **kwargs)
+        return self.argparser.add_argument(*args, **kwargs)  # type: ignore
 
     def add_testenv_attribute(self, name, type, help, default=None, postprocess=None):
         """ add an ini-file variable for "testenv" section.
@@ -149,6 +150,7 @@ class DepOption:
             return name
         for forced_dep in config.option.force_dep:
             if self._is_same_dep(forced_dep, name):
+                assert isinstance(forced_dep, str)
                 return forced_dep
         return name
 
@@ -158,7 +160,7 @@ class DepOption:
         dep1_name = pkg_resources.Requirement.parse(dep1).project_name
         try:
             dep2_name = pkg_resources.Requirement.parse(dep2).project_name
-        except pkg_resources.RequirementParseError:
+        except pkg_resources.RequirementParseError:  # type: ignore
             # we couldn't parse a version, probably a URL
             return False
         return dep1_name == dep2_name
@@ -180,6 +182,7 @@ class PosargsOption:
                     if arg:
                         origpath = config.invocationcwd.join(arg, abs=True)
                         if origpath.check():
+                            assert testenv_config.changedir is not None
                             arg = testenv_config.changedir.bestrelpath(origpath)
                     args.append(arg)
             testenv_config._reader.addsubstitutions(args)
@@ -295,7 +298,7 @@ class SetenvDict(object):
                     raise KeyError(name)
                 val = self.definitions[name]
             except KeyError:
-                return os.environ.get(name, default)
+                return os.environ.get(name, default)  # type: ignore
             self._lookupstack.append(name)
             try:
                 self.resolved[name] = res = self.reader._replace(val)
@@ -304,7 +307,7 @@ class SetenvDict(object):
             return res
 
     def __getitem__(self, name):
-        x = self.get(name, self._DUMMY)
+        x = self.get(name, self._DUMMY)  # type: ignore
         if x is self._DUMMY:
             raise KeyError(name)
         return x
@@ -317,7 +320,7 @@ class SetenvDict(object):
         self.resolved[name] = value
 
 
-@tox.hookimpl
+@tox.hookimpl  # type: ignore
 def tox_addoption(parser):
     # formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
@@ -332,7 +335,7 @@ def tox_addoption(parser):
     parser.add_argument(
         "--help-ini", "--hi", action="store_true", dest="helpini", help="show help about ini-names"
     )
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "-v",
         action="count",
         dest="verbose_level",
@@ -340,7 +343,7 @@ def tox_addoption(parser):
         help="increase verbosity of reporting output. -vv mode turns off "
         "output redirection for package installation",
     )
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "-q",
         action="count",
         dest="quiet_level",
@@ -389,7 +392,7 @@ def tox_addoption(parser):
         dest="sdistonly",
         help="only perform the sdist packaging activity.",
     )
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "--installpkg",
         action="store",
         default=None,
@@ -436,7 +439,7 @@ def tox_addoption(parser):
     )
 
     # We choose 1 to 4294967295 because it is the range of PYTHONHASHSEED.
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "--hashseed",
         action="store",
         metavar="SEED",
@@ -446,7 +449,7 @@ def tox_addoption(parser):
         "([1, 1024] on Windows). "
         "Passing 'noset' suppresses this behavior.",
     )
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "--force-dep",
         action="append",
         metavar="REQ",
@@ -468,7 +471,7 @@ def tox_addoption(parser):
         action="store_true",
         help="don't fail tests for missing interpreters",
     )
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "--workdir",
         action="store",
         dest="workdir",
@@ -490,7 +493,7 @@ def tox_addoption(parser):
     )
 
     # add various core venv interpreter attributes
-    def setenv(testenv_config, value):
+    def setenv(testenv_config, value):  # type: (TestenvConfig, SetenvDict) -> SetenvDict
         setenv = value
         config = testenv_config.config
         if "PYTHONHASHSEED" not in setenv and config.hashseed is not None:
@@ -504,7 +507,7 @@ def tox_addoption(parser):
         help="list of X=Y lines with environment variable settings",
     )
 
-    def basepython_default(testenv_config, value):
+    def basepython_default(testenv_config, value):  # type: (TestenvConfig, str) -> str
         if value is None:
             for factor in testenv_config.factors:
                 if factor in tox.PYTHON.DEFAULT_FACTORS:
@@ -520,7 +523,7 @@ def tox_addoption(parser):
         help="executable name or path of interpreter used to create a virtual test environment.",
     )
 
-    def merge_description(testenv_config, value):
+    def merge_description(testenv_config, value):  # type: (TestenvConfig, str) -> str
         """the reader by default joins generated description with new line,
          replace new line with space"""
         return value.replace("\n", " ")
@@ -573,7 +576,7 @@ def tox_addoption(parser):
         "status.",
     )
 
-    def recreate(testenv_config, value):
+    def recreate(testenv_config, value):   # type: (TestenvConfig, bool) -> bool
         if testenv_config.config.option.recreate:
             return True
         return value
@@ -586,7 +589,7 @@ def tox_addoption(parser):
         help="always recreate this test environment.",
     )
 
-    def passenv(testenv_config, value):
+    def passenv(testenv_config, value):  # type: (TestenvConfig, List[str]) -> Set[str]
         # Flatten the list to deal with space-separated values.
         value = list(itertools.chain.from_iterable([x.split(" ") for x in value]))
 
@@ -647,10 +650,10 @@ def tox_addoption(parser):
         "otherwise testenv will be skipped.",
     )
 
-    def sitepackages(testenv_config, value):
+    def sitepackages(testenv_config, value):  # type: (TestenvConfig, str) -> str
         return testenv_config.config.option.sitepackages or value
 
-    def alwayscopy(testenv_config, value):
+    def alwayscopy(testenv_config, value):  # type: (TestenvConfig, str) -> str
         return testenv_config.config.option.alwayscopy or value
 
     parser.add_testenv_attribute(
@@ -671,7 +674,7 @@ def tox_addoption(parser):
         "than symlinking.",
     )
 
-    def pip_pre(testenv_config, value):
+    def pip_pre(testenv_config, value):  # type: (TestenvConfig, str) -> str
         return testenv_config.config.option.pre or value
 
     parser.add_testenv_attribute(
@@ -682,9 +685,9 @@ def tox_addoption(parser):
         help="If ``True``, adds ``--pre`` to the ``opts`` passed to the install command. ",
     )
 
-    def develop(testenv_config, value):
+    def develop(testenv_config, value):  # type: (TestenvConfig, str) -> bool
         option = testenv_config.config.option
-        return not option.installpkg and (value or option.develop)
+        return not option.installpkg and (value or option.develop)  # type: ignore
 
     parser.add_testenv_attribute(
         name="usedevelop",
@@ -729,7 +732,21 @@ def tox_addoption(parser):
 
 class Config(object):
     """Global Tox config object."""
-
+    indexserver = None
+    toxinidir = None
+    distdir = None
+    envlist = None
+    logdir = None
+    sdistsrc = None
+    toxworkdir = None
+    hashseed = None
+    minversion = None
+    alwayscopy = None
+    toxinipath = None
+    setupdir = None
+    _parser = None
+    distshare = None
+    
     def __init__(self, pluginmanager, option, interpreters):
         self.envconfigs = {}
         """Mapping envname -> envconfig"""
@@ -737,6 +754,7 @@ class Config(object):
         self.interpreters = interpreters
         self.pluginmanager = pluginmanager
         self.option = option
+        self._testenv_attr = []
         """option namespace containing all parsed command line options"""
 
     @property
@@ -763,6 +781,8 @@ class TestenvConfig:
         self.factors = factors
         self._reader = reader
         self.missing_subs = []
+        self.args_are_paths = False
+        self.changedir = None
         """Holds substitutions that could not be resolved.
 
         Pre 2.8.1 missing substitutions crashed with a ConfigError although this would not be a

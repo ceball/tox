@@ -96,6 +96,7 @@ class NormalizedVersion(object):
             the possibility of using a version number like "1.0" (i.e.
             where the major number is less than that huge major number).
         """
+        self.parts = ((0,), tuple(), tuple())
         self._parse(s, error_on_huge_major_num)
 
     @classmethod
@@ -115,17 +116,18 @@ class NormalizedVersion(object):
         block = self._parse_numdots(groups["version"], s, False, 2)
         extraversion = groups.get("extraversion")
         if extraversion not in ("", None):
-            block += self._parse_numdots(extraversion[1:], s)
+            block += self._parse_numdots(extraversion[1:], s)  # type: ignore
         parts.append(tuple(block))
 
         # prerelease
         prerel = groups.get("prerel")
         if prerel is not None:
-            block = [prerel]
-            block += self._parse_numdots(groups.get("prerelversion"), s, pad_zeros_length=1)
+            block = [prerel]  # type: ignore
+            pre = groups.get("prerelversion")
+            block += self._parse_numdots(pre, s, pad_zeros_length=1)  # type: ignore
             parts.append(tuple(block))
         else:
-            parts.append(FINAL_MARKER)
+            parts.append(FINAL_MARKER)  # type: ignore
 
         # postdev
         if groups.get("postdev"):
@@ -138,11 +140,11 @@ class NormalizedVersion(object):
                     postdev.append(FINAL_MARKER[0])
             if dev is not None:
                 postdev.extend(["dev", int(dev)])
-            parts.append(tuple(postdev))
+            parts.append(tuple(postdev))  # type: ignore
         else:
-            parts.append(FINAL_MARKER)
-        self.parts = tuple(parts)
-        if error_on_huge_major_num and self.parts[0][0] > 1980:
+            parts.append(FINAL_MARKER)  # type: ignore
+        self.parts = tuple(parts)  # type: ignore
+        if error_on_huge_major_num and self.parts[0][0] > 1980:  # type: ignore
             raise HugeMajorVersionNumError(
                 "huge major version number, {!r}, which might cause future problems: {!r}".format(
                     self.parts[0][0], s
@@ -174,7 +176,7 @@ class NormalizedVersion(object):
                 nums.pop()
         while len(nums) < pad_zeros_length:
             nums.append(0)
-        return nums
+        return nums  # type: ignore
 
     def __str__(self):
         return self.parts_to_str(self.parts)
@@ -186,7 +188,7 @@ class NormalizedVersion(object):
         main, prerel, postdev = parts
         s = ".".join(str(v) for v in main)
         if prerel is not FINAL_MARKER:
-            s += prerel[0]
+            s += prerel[0]  # type: ignore
             s += ".".join(str(v) for v in prerel[1:])
         if postdev and postdev is not FINAL_MARKER:
             if postdev[0] == "f":
@@ -210,12 +212,12 @@ class NormalizedVersion(object):
     def __eq__(self, other):
         if not isinstance(other, NormalizedVersion):
             self._cannot_compare(other)
-        return self.parts == other.parts
+        return bool(self.parts == other.parts)
 
     def __lt__(self, other):
         if not isinstance(other, NormalizedVersion):
             self._cannot_compare(other)
-        return self.parts < other.parts
+        return bool(self.parts < other.parts)
 
     def __ne__(self, other):
         return not self.__eq__(other)

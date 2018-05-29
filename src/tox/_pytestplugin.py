@@ -91,6 +91,7 @@ class RunResult:
         self.duration = None
         self.out = None
         self.err = None
+        self._start = 0.0
 
     def __enter__(self):
         self._start = time.time()

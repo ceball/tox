@@ -45,8 +45,8 @@ class EnvLog:
         self.dict = dict
 
     def set_python_info(self, pythonexecutable):
-        pythonexecutable = py.path.local(pythonexecutable)
-        out = pythonexecutable.sysexec(
+        pythonexecutable_path = py.path.local(pythonexecutable)  # type: py.path.LocalPath
+        out = pythonexecutable_path.sysexec(
             "-c",
             "import sys; "
             "print(sys.executable);"
@@ -76,7 +76,7 @@ class CommandLog:
         self.list = list
 
     def add_command(self, argv, output, retcode):
-        d = {}
+        d = {}  # type: Dict[str, Union[Sequence[str], str]]
         self.list.append(d)
         d["command"] = argv
         d["output"] = output
